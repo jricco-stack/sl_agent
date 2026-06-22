@@ -7,9 +7,18 @@ import { WebClient } from "@slack/web-api";
 import express from "express";
 import dotenv from "dotenv";
 import axios from "axios";
-import menuengineering from "./menuengineering.py";
-import foodcost from "./foodcost.py";
-import data from "./data.py";
+import { execSync } from "child_process";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function runPythonScript(scriptName) {
+    const scriptPath = join(__dirname, scriptName);
+    const output = execSync(`python "${scriptPath}"`, { encoding: "utf-8" });
+    return JSON.parse(output.trim());
+}
 
 
 dotenv.config();
@@ -147,9 +156,9 @@ class Agent {
         const results = [];
 
         try {
-            let meMatrix = menuengineering.menu_engineering();
-            let fcMatrix = foodcost.food_cost();
-            let dataMatrix = data.data();
+            let meMatrix = runPythonScript("menuengineering.py");
+            let fcMatrix = runPythonScript("foodcost.py");
+            let dataMatrix = runPythonScript("data.py");
             let domain = memberInfo.email.split("@")[1];
             const companyInfo = await this.getCompanyInfo(domain);
             results.push({ type: "menu_engineering", data: meMatrix });

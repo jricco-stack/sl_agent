@@ -1,5 +1,7 @@
+import json
+
 def data():
-    
+
     # This is POS data, we get this from Toast POS reports, and it includes sales by meal period, item performance, server performance, etc.
 
 
@@ -200,6 +202,12 @@ def data():
         }
     }
 
-    # Example access pattern:
-    # bucket_1['A']['pos_reports']['sales_by_meal_period'] = {'Breakfast': 1200.0, 'Lunch': 3400.0}
-    return bucket_1, bucket_2, bucket_3, bucket_4
+    return json.dumps({
+        "bucket_1": bucket_1,
+        "bucket_2": bucket_2,
+        "bucket_3": bucket_3,
+        "bucket_4": bucket_4
+    })
+
+if __name__ == "__main__":
+    print(data())

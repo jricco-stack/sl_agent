@@ -246,5 +246,54 @@ class Agent {
         }
     }
 
+    async start() {
+        try{
+            log.info('Initializing database...');
+            await initDatabase();
+            
+            const port = process.env.PORT || 3000;
+            this.server = this.app.listen(port, () => {
+                log.info(`Express server running on port ${port}`)
+            })
+
+            await this.slack.start();
+            log.info('Slack bot connected');
+            log.info('Slack AI agent is up and running');
+            if (process.env.NODE_ENV === 'development') {
+                log.info(`Test endpoint: POST http://localhost:${port}/test/analyze-member`);
+            }
+
+        } catch (error) {
+            log.error('Failed to start', error.message);
+            process.exit(1);
+        }
+    }
+
+    async stop() {
+        log.info('Shutting down...');
+        try {
+            await this.slack.stop()
+            if (this.server) {
+                await new Promise(resolve => this.server.close(resolve));
+            }
+            await closeDatabase();
+            log.info('Stopped successfully');
+            process.exit(0);
+        } catch (error) {
+            log.error('Shutdown error', error.message);
+        }
+    }
+
 }
 
+const agent = new Agent();
+
+process.on('SIGINT', () => agent.stop());
+process.on('SIGTERM', () => agent.stop());
+
+agent.start().catch(error => {
+    console.error('Startup failed', error.message);
+    process.exit(1);
+});
+
+export default agent;

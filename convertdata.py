@@ -1,0 +1,1 @@
+# This will convert the TOAST data into the format we need for our analysis. The format is specified in data.py, which is just a placeholder. We will need to clean the data and fill in the missing values, but this is the general structure we will use.

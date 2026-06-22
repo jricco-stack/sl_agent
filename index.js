@@ -51,12 +51,11 @@ class Agent {
     }
 
     setupSlackEvents() {
-        // Most of user logic is leftover from the agent tutorial; users join the channel and then are analyzed. This would just be changed to a business joining the channel and its info being analyzed.
         this.slack.event('team_join', async ({ event }) => {
             try {
                 log.info(`New user joined: ${event.user.name}`);
-                const userInfo = await this.getUserInfo(event.user.id);
-                await this.analyzeAndPostMember(userInfo);
+                const businessInfo = await this.getBusinessInfo(event.user.id);
+                await this.analyzeAndPostBusiness(businessInfo);
 
             } catch (error) {
                 log.error("Error handling team_join event:", error.message);
@@ -65,10 +64,10 @@ class Agent {
 
         this.slack.event('member_joined_channel', async ({ event }) => {
             try {
-                if (event.channel_type === "C") { // Only handle public channels
+                if (event.channel_type === "C") {
                     log.info(`User joined channel: ${event.user} in ${event.channel}`);
-                    const userInfo = await this.getUserInfo(event.user);
-                    await this.analyzeAndPostMember(userInfo, event.channel);
+                    const businessInfo = await this.getBusinessInfo(event.user);
+                    await this.analyzeAndPostBusiness(businessInfo, event.channel);
                 }
             } catch (error) {
                 log.error("Error handling member_joined_channel event:", error.message);
@@ -86,14 +85,12 @@ class Agent {
 
 
         })
-        // Only for testing purposes, not for production
-        // This endpoint allows us to simulate a user joining and analyze their profile without needing to actually join a channel
         if (process.env.NODE_ENV === "development") {
-            this.app.post('/test/analyze-member', async (req, res) => {
+            this.app.post('/test/analyze-business', async (req, res) => {
                 try {
-                    const memberInfo = req.body;
-                    if (!memberInfo) return res.status(400).json({ error: "Member info is required" });
-                    const analysis = await this.analyzeAndPostMember(memberInfo);
+                    const businessInfo = req.body;
+                    if (!businessInfo) return res.status(400).json({ error: "Business info is required" });
+                    const analysis = await this.analyzeAndPostBusiness(businessInfo);
                     res.json({ success: true, analysis, timestamp: new Date().toISOString() });
                 } catch (error) {
                     log.error("Error in test analysis:", error.message);
@@ -107,66 +104,56 @@ class Agent {
         });
     }
 
-    // Getting info from user. this logic would instead get info from business, by connecting to Toast API or pulling info from their website, etc.
-    async getUserInfo(userId) {
+    async getBusinessInfo(userId) {
         const result = await this.webClient.users.info({ user: userId });
         const user = result.user;
+        const email = user.profile?.email;
+        const domain = email ? email.split("@")[1] : null;
         return {
             id: user.id,
             name: user.real_name || user.name,
-            username: user.name,
-            email: user.profile?.email,
-            title: user.profile?.title,
-            timezone: user.tz,
-            profile: {
-                firstName: user.profile?.first_name,
-                lastName: user.profile?.last_name,
-                statusText: user.profile?.status_text,
-            },
+            email: email,
+            domain: domain,
         };
     }
 
-    // The full outline of analysis pipeline - this is where the main logic of the agent lives, and where you would customize the analysis for your specific use case. The current implementation is just a placeholder to show how the different pieces fit together.
-    async analyzeAndPostMember(memberInfo) {
+    async analyzeAndPostBusiness(businessInfo) {
         let analysisId = null;
         try {
-            log.info(`Processing member ${memberInfo.name}`);
-            const researchData = await this.doBasicResearch(memberInfo);
-            const analysis = await this.analyzeWithAI(memberInfo, researchData);
-            log.info("Saving analysis to database for  ${memberInfo.name}");
-            analysisId = await this.saveMemberAnalysis(memberInfo, analysis, researchData);
-            await this.postAnalysisToChannel(memberInfo, analysis, researchData);
+            log.info(`Processing business ${businessInfo.name}`);
+            const researchData = await this.doBasicResearch(businessInfo);
+            const analysis = await this.analyzeWithAI(businessInfo, researchData);
+            log.info(`Saving analysis to database for ${businessInfo.name}`);
+            analysisId = await this.saveBusinessAnalysis(businessInfo, analysis, researchData);
+            await this.postAnalysisToChannel(businessInfo, analysis, researchData);
 
             if (analysisId) {
                 await markAsSentToSlack(analysisId);
             }
-            
 
         } catch (error) {
-            log.error("Error processing ${memberInfo.name}:", error.message);
+            log.error(`Error processing ${businessInfo.name}:`, error.message);
             if (analysisId) {
-                log.info("Analysis ${analysisId} saved to database but not sent to Slack due to error");
+                log.info(`Analysis ${analysisId} saved to database but not sent to Slack due to error`);
             }
             throw error;
         }
     }
 
-    // This is the preliminary research step, where you would do the hard-coded techniques on the businessData you collected.
-    async doBasicResearch(memberInfo) {
+    async doBasicResearch(businessInfo) {
         const results = [];
 
         try {
             let meMatrix = runPythonScript("menuengineering.py");
             let fcMatrix = runPythonScript("foodcost.py");
             let dataMatrix = runPythonScript("data.py");
-            let domain = memberInfo.email.split("@")[1];
-            const companyInfo = await this.getCompanyInfo(domain);
+            const companyInfo = businessInfo.domain ? await this.getCompanyInfo(businessInfo.domain) : null;
             results.push({ type: "menu_engineering", data: meMatrix });
             results.push({ type: "food_cost", data: fcMatrix });
             results.push({ type: "data", data: dataMatrix });
             results.push({ type: "company_info", data: companyInfo });
         } catch (error) {
-            log.error("Error during basic research for ${memberInfo.name}:", error.message);
+            log.error(`Error during basic research for ${businessInfo.name}:`, error.message);
         }
         return results;
     }
@@ -178,33 +165,33 @@ class Agent {
                 headers: {"User-Agent": "Mozilla/5.0"}
             });
             const titleMatch = response.data.match(/<title>(.*?)<\/title>/i);
-            const title = titleMatch ? titleMatch[1] : 'Company: ${domain}';
+            const title = titleMatch ? titleMatch[1] : `Company: ${domain}`;
             return {
                 url: `https://www.${domain}`,
                 title: title,
-                content: 'Company website for ${domain}', // additional scraping and parsing logic would go here to fill this in with more detailed info about the company 
+                content: `Company website for ${domain}`,
                 type: 'Company'
             };
         } catch (error) {
-            log.error("Error getting company info for ${memberInfo.name}:", error.message);
+            log.error(`Error getting company info for ${domain}:`, error.message);
             return null;
         }
     }
 
-    async AnalyzeWithAI(memberInfo, researchData) {
-        const prompt = ChatPromptTemplate.fromTemplate(`Analyze the following business information and research data, 
-            and provide insights and recommendations based on this data. Business Info: 
-            ${JSON.stringify(memberInfo)} Research Data: ${JSON.stringify(researchData)}`);
+    async analyzeWithAI(businessInfo, researchData) {
+        const prompt = ChatPromptTemplate.fromTemplate(`Analyze the following business information and research data,
+            and provide insights and recommendations based on this data. Business Info:
+            ${JSON.stringify(businessInfo)} Research Data: ${JSON.stringify(researchData)}`);
         try {
             const researchSummary = researchData.length > 0 ?
-            researchData.map(r => `${r.title}: ${r.content}`).join('\\n') 
+            researchData.map(r => `${r.title}: ${r.content}`).join('\\n')
             : "No research data available";
 
             const chain = prompt.pipe(this.openai);
             const result = await chain.invoke({
-                name: memberInfo.name,
-                email: memberInfo.email,
-                title: memberInfo.title,
+                name: businessInfo.name,
+                email: businessInfo.email,
+                domain: businessInfo.domain,
                 research: researchSummary
             })
 
@@ -215,8 +202,8 @@ class Agent {
 
             return analysis;
         } catch (error) {
-            log.error("Error during AI analysis for ${memberInfo.name}:", error.message);
-            return "AI analysis failed: ${error.message}";
+            log.error(`Error during AI analysis for ${businessInfo.name}:`, error.message);
+            return `AI analysis failed: ${error.message}`;
         }
     }
 

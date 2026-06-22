@@ -207,5 +207,44 @@ class Agent {
         }
     }
 
+    async postAnalysisToChannel(businessInfo, analysis, researchData) {
+        try {
+            const channelId = process.env.SLACK_CHANNEL_ID;
+            
+            const blocks = [
+                {   
+                    type: 'header',
+                    text: {
+                        type: 'plain_text',
+                        text: `Analysis for ${businessInfo.name}`,
+                    }
+                },
+                {
+                    type: 'section',
+                    fields: [
+                        {
+                            type: 'mrkdwn',
+                            text: `*Business Info*\\nName: ${businessInfo.name}\\nEmail: ${businessInfo.email}\\nDomain: ${businessInfo.domain}`
+                        },
+                        {
+                            type: 'mrkdwn',
+                            text: `*AI Analysis*\\n${typeof analysis === "string" ? analysis : JSON.stringify(analysis, null, 2)}`
+                        }
+                    ]
+                }
+            ];
+
+            await this.webClient.chat.postMessage({
+                channel: channelId,
+                text: `Analysis for ${businessInfo.name}`,
+                blocks
+            });
+
+            log.info(`Analysis posted to channel for ${businessInfo.name}`)
+        } catch (error) {
+            log.error(`Error posting analysis to Slack for ${businessInfo.name}:`, error.message);
+        }
+    }
+
 }
 

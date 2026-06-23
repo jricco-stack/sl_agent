@@ -51,26 +51,14 @@ class Agent {
     }
 
     setupSlackEvents() {
-        this.slack.event('team_join', async ({ event }) => {
+        this.slack.event('app_mention', async ({ event, say }) => {
             try {
-                log.info(`New user joined: ${event.user.name}`);
-                const businessInfo = await this.getBusinessInfo(event.user.id);
-                await this.analyzeAndPostBusiness(businessInfo);
-
+                log.info(`Mentioned by user ${event.user} in channel ${event.channel}: ${event.text}`);
+                const businessInfo = await this.getBusinessInfo(event.user);
+                await this.analyzeAndPostBusiness(businessInfo, event.channel);
             } catch (error) {
-                log.error("Error handling team_join event:", error.message);
-            }
-        });
-
-        this.slack.event('member_joined_channel', async ({ event }) => {
-            try {
-                if (event.channel_type === "C") {
-                    log.info(`User joined channel: ${event.user} in ${event.channel}`);
-                    const businessInfo = await this.getBusinessInfo(event.user);
-                    await this.analyzeAndPostBusiness(businessInfo, event.channel);
-                }
-            } catch (error) {
-                log.error("Error handling member_joined_channel event:", error.message);
+                log.error("Error handling app_mention event:", error.message);
+                await say(`Sorry, something went wrong while processing your request.`);
             }
         });
         this.slack.error(async (error) => log.error("Slack error:", error.message));

@@ -14,6 +14,45 @@ import { dirname, join } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+function menuEngineering(data) {
+    const matrix = [];
+    const bucket1 = data.bucket_1;
+    const posReports = bucket1.A.pos_reports;
+    const menuPerformance = bucket1.B.menu_performance;
+    const salesByMealPeriod = posReports.sales_by_meal_period || {};
+    const contributionMargin = menuPerformance.contribution_margin || {};
+
+    for (const item of Object.keys(contributionMargin)) {
+        const margin = contributionMargin[item];
+        matrix.push([item, margin, salesByMealPeriod[item] || 0]);
+    }
+
+    return matrix;
+}
+
+function foodCostAnalysis(data) {
+    const matrix = [];
+    const bucket3 = data.bucket_3;
+    const supplierInvoices = bucket3.A.supplier_invoices;
+
+    const totalTheoreticalFoodCost = supplierInvoices.reduce(
+        (sum, invoice) => sum + invoice.line_items.reduce((s, item) => s + item.cost, 0),
+        0
+    );
+
+    const wasteLogs = bucket3.D.inventory_management.waste_gap_logs;
+    const kitchenWasteLogs = bucket3.D.inventory_management.kitchen_waste_logs;
+
+    const totalActualFoodCost =
+        wasteLogs.reduce((sum, log) => sum + log.cost, 0) +
+        kitchenWasteLogs.reduce((sum, log) => sum + log.cost, 0);
+
+    matrix.push(["Theoretical Food Cost", totalTheoreticalFoodCost]);
+    matrix.push(["Actual Food Cost", totalActualFoodCost]);
+
+    return matrix;
+}
+
 function runPythonScript(scriptName) {
     const scriptPath = join(__dirname, scriptName);
     const output = execSync(`python "${scriptPath}"`, { encoding: "utf-8" });
@@ -132,9 +171,9 @@ class Agent {
         const results = [];
 
         try {
-            let meMatrix = runPythonScript("menuengineering.py");
-            let fcMatrix = runPythonScript("foodcost.py");
             let dataMatrix = runPythonScript("data.py");
+            let meMatrix = menuEngineering(dataMatrix);
+            let fcMatrix = foodCostAnalysis(dataMatrix);
             const companyInfo = businessInfo.domain ? await this.getCompanyInfo(businessInfo.domain) : null;
             results.push({ type: "menu_engineering", data: meMatrix });
             results.push({ type: "food_cost", data: fcMatrix });

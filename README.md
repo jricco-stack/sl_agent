@@ -1,6 +1,6 @@
-# sl_agent — Restaurant Intelligence Slack Bot
+# sl_agent — Restaurant Intelligence Platform
 
-A Slack bot that pulls your restaurant's operational data, analyzes it with AI, and posts specific, actionable insights back to your team. Built on top of Toast POS data.
+A web dashboard and API that analyzes your restaurant's operational data and surfaces specific, actionable insights. Slack integration is optional — the dashboard works standalone at `http://localhost:3000`.
 
 ---
 
@@ -19,8 +19,11 @@ A Slack bot that pulls your restaurant's operational data, analyzes it with AI, 
 
 | File | What it does |
 |---|---|
-| `index.js` | Main entry point — sets up the Slack bot, Express server, and wires everything together |
-| `db.js` | SQLite database — saves every analysis so you have a history |
+| `index.js` | Startup — launches the API server and optionally the Slack bot |
+| `engine.js` | Pure analysis logic — no Slack, no HTTP. Everything calls this. |
+| `api.js` | REST API — Express routes over the engine, serves the web dashboard |
+| `slack.js` | Slack bot — calls the engine, posts results. Only starts if tokens are set. |
+| `db.js` | Analysis history — saves every run to `analyses.json` |
 | `benchmarks.js` | NRA industry benchmark data and comparison logic |
 | `alerts.js` | Threshold checks — fires alerts when numbers go outside normal ranges |
 | `scheduler.js` | Cron jobs for the morning digest and hourly alert checks |
@@ -29,6 +32,7 @@ A Slack bot that pulls your restaurant's operational data, analyzes it with AI, 
 | `convertdata.py` | Maps raw Toast API responses into the data.py schema |
 | `menuengineering.py` | Stars/Puzzles/Plow Horses/Dogs classification logic |
 | `foodcost.py` | Theoretical vs. actual food cost comparison |
+| `web/` | Dashboard — HTML, CSS, and JS served statically by Express |
 
 ---
 
@@ -42,12 +46,19 @@ npm install
 
 ### 2. Set up your `.env` file
 
+Only `OPENAI_API_KEY` is required to run the dashboard. Slack and Toast credentials are optional.
+
 ```
+# Required
+OPENAI_API_KEY=sk-...
+
+# Optional — Slack bot (if not set, the app runs in web/API mode only)
 SLACK_BOT_TOKEN=xoxb-...
 SLACK_SIGNING_SECRET=...
 SLACK_APP_TOKEN=xapp-...
 SLACK_CHANNEL_ID=C...
-OPENAI_API_KEY=sk-...
+
+# Optional — Toast POS integration
 TOAST_CLIENT_ID=...
 TOAST_CLIENT_SECRET=...
 TOAST_LOCATION_GUID=...
@@ -58,6 +69,8 @@ TOAST_LOCATION_GUID=...
 ```bash
 node index.js
 ```
+
+Open `http://localhost:3000` in your browser. If Slack tokens are present in `.env`, the Slack bot connects automatically at the same time.
 
 ---
 
@@ -125,6 +138,22 @@ The analysis engine is also available as a standalone API — useful for integra
 | `/api/benchmarks` | GET | Benchmark comparisons vs NRA industry data |
 | `/api/question` | POST | Answer to a plain-English question (`{ question: "..." }`) |
 | `/health` | GET | Server health check |
+
+---
+
+## Architecture
+
+The codebase is split into three layers so each piece can change independently:
+
+```
+engine.js          ← pure analysis, no I/O
+    ↑
+api.js + slack.js  ← consume the engine, deliver results
+    ↑
+index.js           ← starts everything
+```
+
+This means you can add a mobile app, a Teams bot, or a third-party integration by calling `engine.js` directly — without touching any existing code.
 
 ---
 

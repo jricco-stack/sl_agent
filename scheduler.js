@@ -1,11 +1,11 @@
 import cron from "node-cron";
 
-// Pass the agent instance in so the scheduler can call its methods directly
-export function startScheduler(agent) {
+// Takes callbacks directly so the scheduler has no dependency on the Slack or Agent classes
+export function startScheduler({ sendMorningDigest, checkAndSendAlerts }) {
     // Morning digest — every day at 7:00am
     cron.schedule("0 7 * * *", async () => {
         try {
-            await agent.sendMorningDigest();
+            await sendMorningDigest();
         } catch (error) {
             console.error("[SCHEDULER] Morning digest failed:", error.message);
         }
@@ -14,7 +14,7 @@ export function startScheduler(agent) {
     // Alert check — every hour during service hours (10am–11pm)
     cron.schedule("0 10-23 * * *", async () => {
         try {
-            await agent.checkAndSendAlerts();
+            await checkAndSendAlerts();
         } catch (error) {
             console.error("[SCHEDULER] Alert check failed:", error.message);
         }

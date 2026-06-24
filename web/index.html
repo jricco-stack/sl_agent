@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Restaurant Dashboard</h1>
+        <nav>
+            <button class="tab-btn active" data-tab="overview">Overview</button>
+            <button class="tab-btn" data-tab="menu">Menu Engineering</button>
+            <button class="tab-btn" data-tab="food-cost">Food Cost</button>
+            <button class="tab-btn" data-tab="alerts">Alerts</button>
+            <button class="tab-btn" data-tab="ask">Ask a Question</button>
+        </nav>
+    </header>
+
+    <main>
+
+        <!-- Overview Tab -->
+        <section id="tab-overview" class="tab active">
+            <div class="status-bar">
+                <div class="status-card">
+                    <span class="label">Prime Cost Status</span>
+                    <span class="value" id="prime-cost-status">—</span>
+                </div>
+                <div class="status-card">
+                    <span class="label">Food Cost vs Theoretical</span>
+                    <span class="value" id="food-cost-pct">—</span>
+                </div>
+                <div class="status-card">
+                    <span class="label">Active Alerts</span>
+                    <span class="value" id="alert-count">—</span>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Key Insights</h2>
+                <ul id="insights-list"><li class="loading">Loading...</li></ul>
+            </div>
+            <div class="card">
+                <h2>Recommendations</h2>
+                <ul id="recommendations-list"><li class="loading">Loading...</li></ul>
+            </div>
+        </section>
+
+        <!-- Menu Engineering Tab -->
+        <section id="tab-menu" class="tab">
+            <div class="quadrant-grid">
+                <div class="quadrant star">
+                    <h3>&#11088; Stars</h3>
+                    <p class="quadrant-desc">High margin, high sales — protect these</p>
+                    <ul id="stars-list"><li class="loading">Loading...</li></ul>
+                </div>
+                <div class="quadrant puzzle">
+                    <h3>&#129513; Puzzles</h3>
+                    <p class="quadrant-desc">High margin, low sales — promote these</p>
+                    <ul id="puzzles-list"><li class="loading">Loading...</li></ul>
+                </div>
+                <div class="quadrant plow-horse">
+                    <h3>&#128020; Plow Horses</h3>
+                    <p class="quadrant-desc">Low margin, high sales — reprice or reduce cost</p>
+                    <ul id="plow-horses-list"><li class="loading">Loading...</li></ul>
+                </div>
+                <div class="quadrant dog">
+                    <h3>&#128021; Dogs</h3>
+                    <p class="quadrant-desc">Low margin, low sales — consider removing</p>
+                    <ul id="dogs-list"><li class="loading">Loading...</li></ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Food Cost Tab -->
+        <section id="tab-food-cost" class="tab">
+            <div class="card">
+                <h2>Theoretical vs Actual Food Cost</h2>
+                <div id="food-cost-chart-wrap">
+                    <canvas id="food-cost-chart" height="120"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Benchmark Comparison</h2>
+                <table id="benchmarks-table">
+                    <thead>
+                        <tr><th>Metric</th><th>Yours</th><th>Industry Range</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="benchmarks-body">
+                        <tr><td colspan="4" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Alerts Tab -->
+        <section id="tab-alerts" class="tab">
+            <div class="card">
+                <h2>Active Alerts</h2>
+                <ul id="alerts-list"><li class="loading">Loading...</li></ul>
+            </div>
+        </section>
+
+        <!-- Ask a Question Tab -->
+        <section id="tab-ask" class="tab">
+            <div class="card chat-card">
+                <h2>Ask about your restaurant</h2>
+                <div id="chat-messages"></div>
+                <form id="chat-form">
+                    <input type="text" id="chat-input" placeholder="e.g. Which items have the best margins?" autocomplete="off">
+                    <button type="submit">Ask</button>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

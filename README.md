@@ -98,6 +98,36 @@ The `convertdata.py` script maps the raw Toast responses into the bucket structu
 
 ---
 
+## Web Dashboard
+
+Visit `http://localhost:3000` after starting the server. No Slack required.
+
+| Tab | What it shows |
+|---|---|
+| **Overview** | Prime cost status, key AI insights, recommendations |
+| **Menu Engineering** | Items sorted into Stars, Puzzles, Plow Horses, Dogs |
+| **Food Cost** | Theoretical vs actual bar chart, benchmark comparison table |
+| **Alerts** | Active operational alerts with dollar amounts |
+| **Ask a Question** | Chat directly with the AI about your restaurant data |
+
+---
+
+## REST API
+
+The analysis engine is also available as a standalone API — useful for integrating with other tools or building your own interface.
+
+| Endpoint | Method | Returns |
+|---|---|---|
+| `/api/analysis` | GET | Full analysis snapshot |
+| `/api/menu-engineering` | GET | Menu matrix with quadrant classifications |
+| `/api/food-cost` | GET | Theoretical vs actual food cost |
+| `/api/alerts` | GET | Active operational alerts |
+| `/api/benchmarks` | GET | Benchmark comparisons vs NRA industry data |
+| `/api/question` | POST | Answer to a plain-English question (`{ question: "..." }`) |
+| `/health` | GET | Server health check |
+
+---
+
 ## What's still to do
 
 1. **Wire Toast into the data pipeline** — `toast.js` and `convertdata.py` are built, they just need to be called on a schedule to keep the data fresh

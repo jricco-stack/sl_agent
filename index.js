@@ -12,6 +12,10 @@ const log = {
     error: (msg, ...args) => console.log(`[ERROR] ${msg}`, ...args),
 };
 
+const slackConfigured = process.env.SLACK_BOT_TOKEN
+    && process.env.SLACK_SIGNING_SECRET
+    && process.env.SLACK_APP_TOKEN;
+
 async function start() {
     try {
         log.info("Initializing database...");
@@ -25,34 +29,39 @@ async function start() {
             log.info(`Dashboard: http://localhost:${port}`);
         });
 
-        // Start Slack bot
-        const { slack, webClient } = createSlackBot();
-        await slack.start();
-        log.info("Slack bot connected");
+        // Slack bot is optional — only starts if tokens are configured
+        if (slackConfigured) {
+            const { slack, webClient } = createSlackBot();
+            await slack.start();
+            log.info("Slack bot connected");
 
-        // Start scheduler
-        startScheduler({
-            sendMorningDigest:  () => sendMorningDigest(webClient),
-            checkAndSendAlerts: () => checkAndSendAlerts(webClient),
-        });
-        log.info("Slack AI agent is up and running");
+            startScheduler({
+                sendMorningDigest:  () => sendMorningDigest(webClient),
+                checkAndSendAlerts: () => checkAndSendAlerts(webClient),
+            });
 
-        async function stop() {
-            log.info("Shutting down...");
-            await slack.stop();
-            await new Promise(resolve => server.close(resolve));
-            await closeDatabase();
-            log.info("Stopped successfully");
-            process.exit(0);
+            process.on("SIGINT",  async () => { await slack.stop(); shutdown(server); });
+            process.on("SIGTERM", async () => { await slack.stop(); shutdown(server); });
+        } else {
+            log.info("Slack not configured — running in web/API mode only");
+            process.on("SIGINT",  () => shutdown(server));
+            process.on("SIGTERM", () => shutdown(server));
         }
 
-        process.on("SIGINT",  stop);
-        process.on("SIGTERM", stop);
+        log.info("Up and running");
 
     } catch (error) {
         log.error("Failed to start:", error.message);
         process.exit(1);
     }
+}
+
+async function shutdown(server) {
+    log.info("Shutting down...");
+    await new Promise(resolve => server.close(resolve));
+    await closeDatabase();
+    log.info("Stopped");
+    process.exit(0);
 }
 
 start();

@@ -10,11 +10,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const execAsync = promisify(exec);
 
-const openai = new ChatOpenAI({
-    modelName: "gpt-4",
-    temperature: 0.3,
-    apiKey: process.env.OPENAI_API_KEY,
-});
+// Instantiated lazily so dotenv has loaded before the API key is read
+function getOpenAI() {
+    return new ChatOpenAI({
+        modelName: "gpt-4",
+        temperature: 0.3,
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+}
 
 async function runPythonScript(scriptName) {
     const scriptPath = join(__dirname, scriptName);
@@ -91,7 +94,7 @@ export async function runAnalysis() {
     researchData.push({ type: "benchmarks", data: benchmarkSummary(researchData) });
 
     const alerts  = checkAlerts(researchData);
-    const result  = await openai.invoke(buildAnalysisPrompt(researchData));
+    const result  = await getOpenAI().invoke(buildAnalysisPrompt(researchData));
     const cleaned = (result.content || result).replace(/```json\n?|```/g, "").trim();
 
     let aiOutput;
@@ -129,6 +132,6 @@ ${JSON.stringify(researchData, null, 2)}
 
 Give a direct, plain-English answer. If the data doesn't have what you need, say so and tell them what data they'd need. Keep it under 3 sentences.`;
 
-    const result = await openai.invoke(prompt);
+    const result = await getOpenAI().invoke(prompt);
     return result.content || result;
 }

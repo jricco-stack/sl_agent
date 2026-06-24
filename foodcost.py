@@ -10,7 +10,7 @@ def food_cost_analysis():
 
     supplier_invoices = bucket_3['A']['supplier_invoices']
 
-    total_theoretical_food_cost = sum(item['cost'] for invoice in supplier_invoices for item in invoice['line_items'])
+    total_theoretical_food_cost = sum(item['cost'] for item in supplier_invoices.get('invoice_line_items', []))
 
     waste_logs = bucket_3['D']['inventory_management']['waste_gap_logs']
     kitchen_waste_logs = bucket_3['D']['inventory_management']['kitchen_waste_logs']
